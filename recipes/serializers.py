@@ -55,9 +55,11 @@ class RecipeUpdateSerializer(serializers.ModelSerializer):
 
 
 class RecipeListSerializer(serializers.ModelSerializer):
+    ingredients = RecipeIngredientSerializer(many=True)
+    
     class Meta:
         model = Recipe
-        fields = ['recipe_id', 'title', 'description', 'cook_time', 'prep_time', 'difficulty', 'servings', 'category_id']
+        fields = '__all__'
 
 
 # class RecipeDeleteSerializer(serializers.ModelSerializer):
