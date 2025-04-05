@@ -1,0 +1,36 @@
+name: Run Tests on Feature Branch Push
+
+# Trigger the workflow on a push to branches that start with "feat"
+on:
+  push:
+    branches:
+      - 'feat*'  # This will trigger on branches starting with "feat"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # You can change the runner based on your needs (e.g., `windows-latest`, `macos-latest`)
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Set up Python environment (if you're using Python)
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'  # Replace with the Python version you need
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m venv venv  # Create a virtual environment
+          source venv/bin/activate  # Activate the virtual environment
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Make sure requirements.txt is up-to-date with dependencies
+
+      # Run tests
+      - name: Run tests
+        run: |
+          source venv/bin/activate  # Activate the virtual environment
+          python manage.py test  # Adjust this if you have specific test commands (e.g., `pytest` or a custom script)
