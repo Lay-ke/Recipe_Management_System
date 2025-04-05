@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from .models import Recipe, RecipeIngredient
+from ingredients.models import Ingredient
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
-    ingredient_id = serializers.PrimaryKeyRelatedField(queryset=RecipeIngredient.objects.all())
+    ingredient_id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
 
     class Meta:
         model = RecipeIngredient
@@ -18,6 +19,13 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ['recipe_id', 'created_at']
         extra_kwargs = {
             'user_id': {'required': True},
+            'category_id': {'required': True},
+            'title': {'required': True},
+            'description': {'required': True},
+            'instructions': {'required': True},
+            'prep_time': {'required': True},
+            'difficulty': {'required': True},
+            'ingredients': {'required': True},
             'phote': {'required': False},
             'cook_time': {'required': True},
             'servings': {'required': True}
@@ -61,21 +69,3 @@ class RecipeListSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = '__all__'
 
-
-# class RecipeDeleteSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Recipe
-#         fields = ['recipe_id']
-    
-
-# class RecipeDetailSerializer(serializers.ModelSerializer):
-#     ingredients = RecipeIngredientSerializer(many=True)
-    
-#     class Meta:
-#         model = Recipe
-#         fields = ['recipe_id', 'title', 'description', 'ingredients', 'instructions', 'cook_time', 'prep_time', 'phote', 'difficulty', 'servings', 'user_id', 'category_id', 'created_at']
-#         read_only_fields = ['recipe_id', 'created_at']
-#     def to_representation(self, instance):
-#         representation = super().to_representation(instance)
-#         # Add any additional data validation or transformation here if needed
-#         return representation
