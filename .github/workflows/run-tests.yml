@@ -2,9 +2,9 @@ name: Run Tests on Feature Branch Push
 
 # Trigger the workflow on a push to branches that start with "feat"
 on:
-  push:
+  pull_request:
     branches:
-      - 'feat*'  # This will trigger on branches starting with "feat"
+      - main  # This will trigger on pull request to main branch"
 
 jobs:
   test:
