@@ -33,4 +33,4 @@ jobs:
       - name: Run tests
         run: |
           source venv/bin/activate  # Activate the virtual environment
-          python manage.py test  # Adjust this if you have specific test commands (e.g., `pytest` or a custom script)
+          python manage.py test  # Run tests
