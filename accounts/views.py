@@ -24,13 +24,10 @@ def login_user(request):
     if serializer.is_valid():
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
-        print("password", password)
 
         try:
             user = CustomUser.objects.get(email=email)
-            print("user", user)
             if user.check_password(password):
-                print("Verified")
                 # Generate token
                 refresh = RefreshToken.for_user(user)
                 return Response({

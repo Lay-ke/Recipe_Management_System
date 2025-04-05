@@ -3,9 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Review
+from recipes.models import Recipe
 from .serializers import ReviewSerializer
 
-
+# This view handles the creation and retrieval of reviews for recipes.
+# Its url pattern is defined in reviews/urls.py.
 class ReviewListCreateView(APIView):
     # Get reviews for a recipe
     def get(self, request, recipe_id):
@@ -24,9 +26,14 @@ class ReviewListCreateView(APIView):
         """
         Create a new review for a specific recipe.
         """
+        try:
+            # Fetch the Recipe instance using the recipe_id
+            recipe = Recipe.objects.get(recipe_id=recipe_id)
+        except Recipe.DoesNotExist:
+            return Response({"error": "Recipe not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = ReviewSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user_id=request.user, recipe_id=recipe_id)
+            serializer.save(user_id=request.user, recipe_id=recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
