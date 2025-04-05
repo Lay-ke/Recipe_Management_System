@@ -24,7 +24,7 @@ class Recipe(models.Model):
 
 class RecipeIngredient(models.Model):
     recipe_id = models.ForeignKey('recipes.Recipe', on_delete=models.CASCADE)
-    ingredient_id = models.ForeignKey('ingredients.Ingredient', on_delete=models.CASCADE)
+    ingredient_id = models.ForeignKey('ingredients.Ingredient', on_delete=models.CASCADE)   # consider indexing the ingredient_id and optimizing the query 
     unit = models.CharField(max_length=100)
     quantity = models.CharField(max_length=100)
 
