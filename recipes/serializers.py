@@ -3,19 +3,101 @@ from .models import Recipe, RecipeIngredient
 from ingredients.models import Ingredient
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
+    # Using a PK related field for writing, but on output it will be part of the nested representation.
     ingredient_id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+    unit = serializers.CharField(max_length=100)
+    quantity = serializers.CharField(max_length=100)
 
     class Meta:
         model = RecipeIngredient
         fields = ['ingredient_id', 'unit', 'quantity']
 
 
-class RecipeCreateSerializer(serializers.ModelSerializer):
-    ingredients = RecipeIngredientSerializer(many=True)
+class RecipeSerializer(serializers.ModelSerializer):
+    # For creation, we expect a list of ingredients with unit and quantity.
+    ingredients = RecipeIngredientSerializer(many=True, write_only=True)
 
     class Meta:
         model = Recipe
-        fields = ['recipe_id', 'title', 'description', 'ingredients', 'instructions', 'cook_time', 'prep_time', 'phote', 'difficulty', 'servings', 'user_id', 'category_id']
+        # Using all fields; the ones below are read-only.
+        fields = '__all__'
+        read_only_fields = ['recipe_id', 'created_at']
+
+        extra_kwargs = {
+            'user_id': {'required': True},
+            'category_id': {'required': True},
+            'title': {'required': True},
+            'description': {'required': True},
+            'instructions': {'required': True},
+            'prep_time': {'required': True},
+            'cook_time': {'required': True},
+            'servings': {'required': True},
+            'difficulty': {'required': True},
+            'phote': {'required': False, 'allow_null': True},
+        }
+
+    def create(self, validated_data):
+        # Pop out the ingredients data that comes from the nested field.
+        ingredients_data = validated_data.pop('ingredients', [])
+        recipe = Recipe.objects.create(**validated_data)
+
+        # Create the through model entries (RecipeIngredient) for each ingredient.
+        for ingredient_data in ingredients_data:
+            ingredient = ingredient_data.pop('ingredient_id')
+            RecipeIngredient.objects.create(
+                recipe_id=recipe,
+                ingredient_id=ingredient,
+                **ingredient_data
+            )
+        return recipe
+    
+    def update(self, instance, validated_data):
+        # Extract ingredients data from the update payload.
+        ingredients_data = validated_data.pop('ingredients', None)
+
+        # Update the recipe instance with any new values.
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if ingredients_data is not None:
+            # Clear out the old RecipeIngredient entries.
+            instance.recipeingredient_set.all().delete()
+            # Re-create RecipeIngredient entries based on the new list.
+            for ingredient_data in ingredients_data:
+                ingredient = ingredient_data.pop('ingredient_id')
+                RecipeIngredient.objects.create(
+                    recipe_id=instance,
+                    ingredient_id=ingredient,
+                    **ingredient_data
+                )
+        return instance
+
+    def to_representation(self, instance):
+        # Get the default representation first.
+        rep = super().to_representation(instance)
+        # Replace the "ingredients" field with nested details from RecipeIngredient.
+        recipe_ingredients = RecipeIngredient.objects.filter(recipe_id=instance)
+        rep['ingredients'] = RecipeIngredientSerializer(recipe_ingredients, many=True).data
+        return rep
+
+
+            
+            # Append ingredient to the list of ingredient IDs for the Recipe
+        #     ingredient_ids.append(ingredient.id)  # Corrected from 'ingredient.ingredient_id'
+        
+        # # Set the ingredients field in the Recipe instance
+        # recipe.ingredients.set(ingredient_ids)
+        
+
+
+
+class RecipeUpdateSerializer(serializers.ModelSerializer):
+    recipe_ingredients = RecipeIngredientSerializer(many=True)
+
+    class Meta:
+        model = Recipe
+        fields = '__all__'
         read_only_fields = ['recipe_id', 'created_at']
         extra_kwargs = {
             'user_id': {'required': True},
@@ -25,47 +107,50 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             'instructions': {'required': True},
             'prep_time': {'required': True},
             'difficulty': {'required': True},
-            'ingredients': {'required': True},
-            'phote': {'required': False},
-            'cook_time': {'required': True},
-            'servings': {'required': True}
-        }
-
-    def create(self, validated_data):
-        ingredients_data = validated_data.pop('ingredients', [])
-        recipe = Recipe.objects.create(**validated_data)
-        for ingredient_data in ingredients_data:
-            RecipeIngredient.objects.create(recipe_id=recipe, **ingredient_data)
-        return recipe
-
-
-class RecipeUpdateSerializer(serializers.ModelSerializer):
-    ingredients = RecipeIngredientSerializer(many=True)
-
-    class Meta:
-        model = Recipe
-        fields = ['title', 'description', 'ingredients', 'instructions', 'cook_time', 'prep_time', 'phote', 'difficulty', 'servings', 'category_id']
-        extra_kwargs = {
-            'phote': {'required': False},
+            'ingredients': {'required': True},  # used for writing
+            'recipe_ingredients': {'read_only': True, 'allow_blank': True, 'required': False},  # read-only field
+            'phote': {'required': False, 'allow_null': True},
             'cook_time': {'required': True},
             'servings': {'required': True}
         }
 
     def update(self, instance, validated_data):
-        ingredients_data = validated_data.pop('ingredients', [])
+        # We'll manually grab 'ingredients' from the raw input instead
+        ingredients_data = self.initial_data.get('ingredients', [])
+
+        # Update basic Recipe fields
         instance = super().update(instance, validated_data)
 
-        # Clear existing ingredients and add updated ones
-        instance.ingredients.all().delete()
+        # Clear existing ingredients
+        RecipeIngredient.objects.filter(recipe_id=instance).delete()
+
+        # Add new ones
         for ingredient_data in ingredients_data:
-            RecipeIngredient.objects.create(recipe_id=instance, **ingredient_data)
+            ingredient = ingredient_data.get('ingredient_id')
+            try:
+                # Ensure the ingredient exists
+                ingredient_instance = Ingredient.objects.get(ingredient_id=ingredient)
+            except Ingredient.DoesNotExist:
+                raise serializers.ValidationError(f"Ingredient with ID {ingredient} does not exist.")
+            # Ensure the ingredient exists
+            RecipeIngredient.objects.create(
+                recipe_id=instance,
+                ingredient_id=ingredient_instance,
+                quantity=ingredient_data.get('quantity'),
+                unit=ingredient_data.get('unit')
+            )
+
         return instance
 
 
+
 class RecipeListSerializer(serializers.ModelSerializer):
-    ingredients = RecipeIngredientSerializer(many=True)
-    
+    recipe_ingredients = serializers.SerializerMethodField()
+
     class Meta:
         model = Recipe
         fields = '__all__'
 
+    def get_recipe_ingredients(self, obj):
+        recipe_ingredients = RecipeIngredient.objects.filter(recipe_id=obj)
+        return RecipeIngredientSerializer(recipe_ingredients, many=True).data
