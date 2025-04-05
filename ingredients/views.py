@@ -1,21 +1,23 @@
-from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import status
 from .models import Ingredient
 from recipes.models import Recipe
-from .serializers import IngredientSerializer, IngredientDetailSerializer
-from recipes.serializers import RecipeListSerializer
+from .serializers import IngredientSerializer
+from recipes.serializers import RecipeSerializer
 
 
 class IngredientListCreateView(APIView):
+    # Handles listing all ingredients and creating a new ingredient
     def get(self, request):
+        # Retrieve all ingredients and serialize them
         ingredients = Ingredient.objects.all()
         serializer = IngredientSerializer(ingredients, many=True)
         return Response(serializer.data)
     
     def post(self, request):
+        # Create a new ingredient from request data
         new_ingredient = request.data
         serializer = IngredientSerializer(data=new_ingredient)
         if serializer.is_valid():
@@ -26,21 +28,24 @@ class IngredientListCreateView(APIView):
 
 
 class IngredientDetailUpdateDeleteView(APIView):
+    # Handles retrieving, updating, and deleting a specific ingredient by ID
     def get(self, request, id):
+        # Retrieve a specific ingredient by ID
         try:
             ingredient = Ingredient.objects.get(ingredient_id=id)
         except Ingredient.DoesNotExist:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = IngredientDetailSerializer(ingredient)
+        serializer = IngredientSerializer(ingredient)
         return Response(serializer.data)
     
     def put(self, request, id):
+        # Update a specific ingredient by ID
         try:
             update_ingredient = request.data
             ingredient = Ingredient.objects.get(ingredient_id=id)
         except Ingredient.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = IngredientDetailSerializer(ingredient, data=update_ingredient)
+        serializer = IngredientSerializer(ingredient, data=update_ingredient)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Update successful.",
@@ -48,6 +53,7 @@ class IngredientDetailUpdateDeleteView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, id):
+        # Delete a specific ingredient by ID
         try:
             ingredient = Ingredient.objects.get(ingredient_id=id)
         except Ingredient.DoesNotExist:
@@ -57,14 +63,17 @@ class IngredientDetailUpdateDeleteView(APIView):
     
 
 class IngredientRecipesView(APIView):
+    # Handles retrieving all recipes that use a specific ingredient
     def get(self, request, id):
+        # Retrieve a specific ingredient by ID
         try:
             ingredient = Ingredient.objects.get(ingredient_id=id)
         except Ingredient.DoesNotExist:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        recipes = Recipe.objects.filter(ingredients=ingredient) # consider indexing the ingredient_id and optimizing the query
+        # Retrieve recipes that include the ingredient
+        recipes = Recipe.objects.filter(ingredients=ingredient)  # Consider indexing ingredient_id for optimization
         if not recipes.exists():
             return Response({"detail": "No recipes found for this ingredient."}, status=status.HTTP_404_NOT_FOUND)
-        serializer = RecipeListSerializer(recipes, many=True)
+        serializer = RecipeSerializer(recipes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
