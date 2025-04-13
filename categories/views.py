@@ -5,7 +5,7 @@ from rest_framework import status
 from .models import Category
 from recipes.models import Recipe
 from .serializers import CategorySerializer
-from recipes.serializers import RecipeListSerializer
+from recipes.serializers import RecipeSerializer
 
 class CategoryListCreateView(APIView):
     def get(self, request):
@@ -61,5 +61,5 @@ class CategoryRecipesView(APIView):
         except Category.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
         recipes = Recipe.objects.filter(category=category)
-        serializer = RecipeListSerializer(recipes, many=True)
+        serializer = RecipeSerializer(recipes, many=True)
         return Response(serializer.data)
